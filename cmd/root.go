@@ -22,7 +22,7 @@ Configuration should be set via environment variables. Possible values:
     AWS_*:                        Any needed AWS credential environment variables (region, key, secret, profile)
     LAMBDO_FLY_TOKEN              string, a valid Fly API token
     LAMBDO_FLY_REGION, FLY_REGION string, one of these must be set. FLY_REGION is already set when running in Fly
-    LAMBDO_FLY_APP,FLY_APP_NAME   string, one of these must be set. FLY_APP_NAME is already set when running in Fly
+    LAMBDO_FLY_APP, FLY_APP_NAME  string, one of these must be set. FLY_APP_NAME is already set when running in Fly
 
   optional:
     LAMBDO_ENV:                   string, default: local
