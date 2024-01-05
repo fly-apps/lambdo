@@ -14,9 +14,6 @@ try {
             console.error("handler execution error", e)
         }
     }
-
-    return handler_module.handler(events);
-
 } catch (e) {
     console.error("error retrieving or running events", e)
     process.exit(1)

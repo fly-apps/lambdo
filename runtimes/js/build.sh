@@ -3,7 +3,7 @@
 # Requires building on x86-64 architecture
 # for Fly VM's
 docker build \
-  -t public.ecr.aws/i2r3m5g4/runtime-js:latest \
+  -t fideloper/lambdo-js:20 \
   -f Dockerfile \
   .
 

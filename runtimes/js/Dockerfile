@@ -1,4 +1,4 @@
-FROM node:20
+FROM node:20-slim
 
 COPY src/index.js /opt/index.js
 
