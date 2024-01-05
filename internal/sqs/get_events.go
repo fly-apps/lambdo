@@ -26,11 +26,13 @@ GETMSGS:
 		default:
 			logging.GetLogger().Debug("about to call sqs.ReceiveMessage")
 			response, sqsErr := client.ReceiveMessage(ctx, &sqs.ReceiveMessageInput{
-				QueueUrl:            aws.String(cfg.GetConfig().SQSQueueUrl),
-				MaxNumberOfMessages: int32(cfg.GetConfig().EventsPerMachine),   // max of 10
-				WaitTimeSeconds:     int32(cfg.GetConfig().SQSLongPollSeconds), // long polling
-				VisibilityTimeout:   30,                                        // POC queue defaults to 30, we mirror that here
+				QueueUrl:              aws.String(cfg.GetConfig().SQSQueueUrl),
+				MaxNumberOfMessages:   int32(cfg.GetConfig().EventsPerMachine),   // max of 10
+				WaitTimeSeconds:       int32(cfg.GetConfig().SQSLongPollSeconds), // long polling
+				VisibilityTimeout:     30,                                        // POC queue defaults to 30, we mirror that here
+				MessageAttributeNames: []string{"image"},                         // eventually also "format" attribute
 			})
+
 			if sqsErr != nil {
 				if !errors.Is(sqsErr, context.Canceled) {
 					return fmt.Errorf("could not receive SQS messages: %w", sqsErr)
