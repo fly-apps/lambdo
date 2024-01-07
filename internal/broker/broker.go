@@ -14,6 +14,7 @@ import (
 type Event struct {
 	Image string
 	Body  string
+	Meta  map[string]string
 }
 
 type EventCollection struct {
@@ -24,6 +25,7 @@ func SendToMachine(messages []types.Message) error {
 	api := fly.NewApi(config.GetConfig().FlyToken)
 	appName := config.GetConfig().FlyApp
 	// Each attempt iteration will try a new region
+	// TODO: Respect config.GetConfig().FlyRegion setting
 	regions := []string{"bos", "dfw", "den", "mia"}
 
 	eventsPerMachine := map[string]*EventCollection{}
@@ -43,21 +45,24 @@ func SendToMachine(messages []types.Message) error {
 		eventsPerMachine[image].Events = append(eventsPerMachine[image].Events, &Event{
 			Image: image,
 			Body:  *m.Body,
+			Meta:  map[string]string{"receipt": *m.ReceiptHandle},
 		})
 	}
 
 	// Build JSON array of events, for each unique image
 	// This assumes each event body is a
 	// valid JSON string (lol)
-	// This feels dumb af, but good enough for now
+	// This is dumb af, but good enough for now
 	for image, collection := range eventsPerMachine {
 		eventStrings := ""
+		receipts := []string{}
 		for k, e := range collection.Events {
 			if k == 0 {
 				eventStrings += e.Body
 			} else {
 				eventStrings += "," + e.Body
 			}
+			receipts = append(receipts, e.Meta["receipt"])
 		}
 
 		eventStringJson := fmt.Sprintf("[%s]", eventStrings)
@@ -77,25 +82,12 @@ func SendToMachine(messages []types.Message) error {
 						Env: map[string]string{
 							"EVENTS_PATH": "/tmp/events.json",
 						},
+						// TODO: Configurable!?
 						Guest: fly.MachineSize{
 							CpuCount: 2,
 							RAM:      2048,
 							Type:     "shared",
 						},
-						//Processes: []fly.MachineProcess{
-						//	{
-						//		Cmd: []string{
-						//			"cat",
-						//			"/tmp/eventsPerMachine.json",
-						//		},
-						//	},
-						//	{
-						//		Cmd: []string{
-						//			"/bin/sleep",
-						//			"3",
-						//		},
-						//	},
-						//},
 						Files: []fly.MachineFile{
 							{
 								GuestPath: "/tmp/events.json",
@@ -123,20 +115,18 @@ func SendToMachine(messages []types.Message) error {
 			logging.GetLogger().Error("could not create a Machine for this workload")
 		} else {
 			logging.GetLogger().Debug("machine created, deleting messages", zap.String("image", image))
+
+			// TODO: Handle if messages could not be deleted (so it does not get re-tried?) - perhaps retry logic?
+			for _, receipt := range receipts {
+				delErr := events.DeleteMessage(receipt)
+				if delErr != nil {
+					logging.GetLogger().Error("machine crated but could not delete message", zap.Error(delErr))
+				}
+			}
 		}
 	}
 
-	// TODO: Handle if messages could not be deleted (so it does not get re-tried?)
-	// TODO: Delete messages as they are successfully added to a created machine? (all at once at the end
-	//       could miss partial failure conditions)
-	for _, msg := range messages {
-		delErr := events.DeleteMessage(msg)
-		if delErr != nil {
-			return fmt.Errorf("machines created, but could not delete messages: %w", delErr)
-		}
-	}
-
-	// We don't return an error when a machine is not created successfully
+	// We don't return an error when a machine fails to be created
 	return nil
 }
 

@@ -69,7 +69,7 @@ func RunRootCommand(cmd *cobra.Command, args []string) {
 			case msgs := <-m:
 				logging.GetLogger().Debug("messages received", zap.Any("messages", msgs))
 				// todo: Should we send to broker in go routine to prevent
-				//       holding up messages being processed?
+				//       holding up messages being processed (channel blocked until broker finishes)?
 				brokerWorking.Add(1)
 				err := broker.SendToMachine(msgs)
 				if err != nil {
@@ -90,5 +90,6 @@ func RunRootCommand(cmd *cobra.Command, args []string) {
 	}
 
 	logging.GetLogger().Info("Shutdown: waiting on broker to finish current job")
+
 	brokerWorking.Wait()
 }
