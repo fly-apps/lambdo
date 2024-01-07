@@ -31,6 +31,7 @@ Once you [setup Wireguard](https://fly.io/docs/reference/private-networking/#pri
 # Get the IP Address of the VM we created
 fly m list -a lambdo-docker-builder
 
-# Use that as your DOCKER_HOST
-DOCKER_HOST=tcp://[fdaa:0:6ba9:a7b:97:142d:77ac:2]:2375 docker ps
+# Use that as your DOCKER_HOST, in one of these 2 formats:
+DOCKER_HOST=<machine-id>.vm.<app-name>.internal docker ps
+DOCKER_HOST=tcp://[ipv6-here]:2375 docker ps
 ```
