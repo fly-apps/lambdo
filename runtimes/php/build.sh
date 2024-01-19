@@ -3,7 +3,7 @@
 # Requires building on x86-64 architecture
 # for Fly VM's
 docker build \
-  -t fideloper/lambdo-js:20 \
+  -t fideloper/lambdo-php:8.2 \
   -f Dockerfile \
   .
 

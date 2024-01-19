@@ -3,7 +3,6 @@ const fs = require('fs');
 try {
     const eventsString = fs.readFileSync(process.env.EVENTS_PATH)
     const events = JSON.parse(eventsString)
-    const eventsCount = events.length
 
     const handler_module = require('/app/index.js');
 
