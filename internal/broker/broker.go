@@ -57,9 +57,11 @@ func SendToMachine(messages []types.Message) error {
 			logging.GetLogger().Warn("an event had no command, defaulting to no command", zap.String("error", cmdErr.Error()))
 		}
 
-		if jErr := json.Unmarshal([]byte(cmdString), &cmd); jErr != nil {
-			logging.GetLogger().Warn("could not parse command, no machine will be created", zap.String("error", jErr.Error()))
-			continue
+		if len(cmdString) > 0 {
+			if jErr := json.Unmarshal([]byte(cmdString), &cmd); jErr != nil {
+				logging.GetLogger().Warn("could not parse command, no machine will be created", zap.String("error", jErr.Error()))
+				continue
+			}
 		}
 
 		// md5 of attributes that affect machine creation, so we can group like-events
