@@ -38,6 +38,7 @@ func (m *Machine) IsInitialized() bool {
 type MachineConfig struct {
 	Image       string            `json:"image"`
 	Guest       MachineSize       `json:"guest,omitempty"`
+	Size        string            `json:"size,omitempty"`
 	Env         map[string]string `json:"env,omitempty"`
 	Services    []MachineService  `json:"services,omitempty"`
 	Processes   []MachineProcess  `json:"processes,omitempty"`

@@ -1,7 +1,10 @@
 package broker
 
 import (
+	"crypto/md5"
 	"encoding/base64"
+	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"github.com/aws/aws-sdk-go-v2/service/sqs/types"
 	"github.com/superfly/lambdo/internal/config"
@@ -13,7 +16,9 @@ import (
 
 type Event struct {
 	Image string
+	Size  string
 	Body  string
+	Cmd   []string
 	Meta  map[string]string
 }
 
@@ -30,21 +35,46 @@ func SendToMachine(messages []types.Message) error {
 
 	eventsPerMachine := map[string]*EventCollection{}
 
-	// Group messages (events) by which image they require
+	// Group messages (events) by which image, size, and command they require
 	for _, m := range messages {
-		image, err := findImage(m)
-		if err != nil {
-			logging.GetLogger().Warn("an event had no image", zap.String("error", err.Error()))
+		image, imageErr := findAttribute("image", m)
+		if imageErr != nil {
+			logging.GetLogger().Warn("an event had no image", zap.String("error", imageErr.Error()))
 			continue
 		}
 
-		if _, ok := eventsPerMachine[image]; !ok {
-			eventsPerMachine[image] = &EventCollection{}
+		size, sizeErr := findAttribute("size", m)
+
+		if sizeErr != nil {
+			logging.GetLogger().Warn("an event had no size, defaulting to performance-2x", zap.String("error", sizeErr.Error()))
+			size = "performance-2x"
 		}
 
-		eventsPerMachine[image].Events = append(eventsPerMachine[image].Events, &Event{
+		var cmd []string
+		cmdString, cmdErr := findAttribute("command", m)
+
+		if cmdErr != nil {
+			logging.GetLogger().Warn("an event had no command, defaulting to no command", zap.String("error", cmdErr.Error()))
+		}
+
+		if jErr := json.Unmarshal([]byte(cmdString), &cmd); jErr != nil {
+			logging.GetLogger().Warn("could not parse command, no machine will be created", zap.String("error", jErr.Error()))
+			continue
+		}
+
+		// md5 of attributes that affect machine creation, so we can group like-events
+		// into machines that run the same way
+		eventsPerMachineKeyHash := md5.Sum([]byte(fmt.Sprintf("%s-%s-%s", image, size, cmdString)))
+		eventsPerMachineKey := hex.EncodeToString(eventsPerMachineKeyHash[:])
+		if _, ok := eventsPerMachine[eventsPerMachineKey]; !ok {
+			eventsPerMachine[eventsPerMachineKey] = &EventCollection{}
+		}
+
+		eventsPerMachine[eventsPerMachineKey].Events = append(eventsPerMachine[eventsPerMachineKey].Events, &Event{
 			Image: image,
 			Body:  *m.Body,
+			Size:  size,
+			Cmd:   cmd,
 			Meta:  map[string]string{"receipt": *m.ReceiptHandle},
 		})
 	}
@@ -53,9 +83,12 @@ func SendToMachine(messages []types.Message) error {
 	// This assumes each event body is a
 	// valid JSON string (lol)
 	// This is dumb af, but good enough for now
-	for image, collection := range eventsPerMachine {
+	for _, collection := range eventsPerMachine {
 		eventStrings := ""
 		receipts := []string{}
+		image := ""
+		size := ""
+		var cmd []string
 		for k, e := range collection.Events {
 			if k == 0 {
 				eventStrings += e.Body
@@ -63,6 +96,13 @@ func SendToMachine(messages []types.Message) error {
 				eventStrings += "," + e.Body
 			}
 			receipts = append(receipts, e.Meta["receipt"])
+
+			// These get reset on every iteration, but in our scenario here,
+			// they'll always get set to the same values since we segregated
+			// them above. Just another code smell, no worries.
+			image = e.Image
+			size = e.Size
+			cmd = e.Cmd
 		}
 
 		eventStringJson := fmt.Sprintf("[%s]", eventStrings)
@@ -82,12 +122,14 @@ func SendToMachine(messages []types.Message) error {
 						Env: map[string]string{
 							"EVENTS_PATH": "/tmp/events.json",
 						},
-						// TODO: Configurable!?
-						Guest: fly.MachineSize{
-							CpuCount: 2,
-							RAM:      2048,
-							Type:     "shared",
-						},
+						/*
+							Guest: fly.MachineSize{
+								CpuCount: 2,
+								RAM:      2048,
+								Type:     "shared",
+							},
+						*/
+						Size: size,
 						Files: []fly.MachineFile{
 							{
 								GuestPath: "/tmp/events.json",
@@ -97,6 +139,14 @@ func SendToMachine(messages []types.Message) error {
 						AutoDestroy: true,
 					},
 				},
+			}
+
+			if len(cmd) > 0 {
+				machine.Machine.Config.Processes = []fly.MachineProcess{
+					{
+						Cmd: cmd,
+					},
+				}
 			}
 
 			m, err := api.CreateMachine(&machine)
@@ -130,12 +180,12 @@ func SendToMachine(messages []types.Message) error {
 	return nil
 }
 
-func findImage(message types.Message) (string, error) {
+func findAttribute(attr string, message types.Message) (string, error) {
 	for k, v := range message.MessageAttributes {
-		if k == "image" {
+		if k == attr {
 			return *v.StringValue, nil
 		}
 	}
 
-	return "", fmt.Errorf("could not find an event image to run")
+	return "", fmt.Errorf("could not find an event %s", attr)
 }

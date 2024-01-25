@@ -30,7 +30,7 @@ GETMSGS:
 				MaxNumberOfMessages:   int32(cfg.GetConfig().EventsPerMachine),   // max of 10
 				WaitTimeSeconds:       int32(cfg.GetConfig().SQSLongPollSeconds), // long polling
 				VisibilityTimeout:     30,                                        // POC queue defaults to 30, we mirror that here
-				MessageAttributeNames: []string{"image"},                         // eventually also "format" attribute
+				MessageAttributeNames: []string{"image", "size"},
 			})
 
 			if sqsErr != nil {
