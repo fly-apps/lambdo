@@ -64,25 +64,40 @@ Example content of `/tmp/events.json`:
 ```
 
 You can either program up your own code to handle this file, or if you like the "serverless function" style, you can use a base image provided by this project.
+Either way, you'll be running code you produce.
 
 ### Use Your Code Base
 
-One way to go about this is to make a command that can be run (`php artisan foo`, `rake foo`, `node index.js foo`, whatever)
+One way to go about this is to use your existing code base, and add a command that can be run (`php artisan foo`, `rake foo`, `node index.js foo`, whatever)
 that reads in the JSON from `/tmp/events.json` and handles each event provided.
 
-Then, when you create an event to process, you can set that command to be run to process the events (examples on that below).
+I'm not a JS developer, but here's some JS I developed as an example of what your code might do:
+
+```js
+const fs = require('fs');
+
+// EVENTS_PATH will be set to "/tmp/events.json"
+// when created by this code base
+const eventsString = fs.readFileSync(process.env.EVENTS_PATH)
+const events = JSON.parse(eventsString)
+
+for (let key in events) {
+    // Draw the rest of the owl
+    do_something_with_this_event(events[key]);
+}
+```
 
 ### Use a Serverless Function
 
-There's 2 base images here you can use, which is a little more like serverless in that you can provide them a function to run for each event.
+There's 2 base images here you can use, which are a little more like serverless in that you can provide them a function to run for each event.
 
-Your Docker image can use the provided images as a default for Node 20 or PHP 8.2 (or make your own), and add in your own code to the correct place.
+The provided images default to Node 20 or PHP 8.2 (you can, of course, make your own). You just need to add in your own code to `/app/index.js` or `/app/index.php`.
 
 See the [sample JS project](runtimes/js/sample-project) or the [sample PHP project](runtimes/php/sample-project) to see what that looks like.
 
 ## The SQS Queue
 
-The SQS queue is the source of events. Sending a message to this queue will result in Machines being created to process them.
+The SQS queue is the source of events. Sending messages to this queue will result in Machines being created to process them.
 
 The message `Body` should be a valid JSON string (your event, its contens are arbitrary).
 
