@@ -1,7 +1,5 @@
 # Lambdo
 
-> Not quite a Lambda, almost as cool as a Lambo.
-
 Run workloads on Fly Machines based on external events. It's like serverless, but you can run your whole code base (or whatever you want).
 
 **There are three components:**
