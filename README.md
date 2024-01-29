@@ -8,16 +8,18 @@ Run workloads on Fly Machines based on external events. It's like serverless, bu
 2. Your code, which is built into a Docker image (like normal on Fly.io)
 3. An SQS queue you own and populate with your own events
 
+This will poll the SQS queue. When 1+ messages are received, it will create 1+ Fly Machines and run your code (with the event as context).
+
 ## The Server
 
 Compile the program:
 
 ```bash
-# For current OS:
+# Locally:
 go build -o bin/lambdo
 
 # For Fly VMs:
-GOOS=linux GOARCH=amd64 go build
+GOOS=linux GOARCH=amd64 -o bin/lambdo go build
 ```
 
 Run the program, with some environment variables:
