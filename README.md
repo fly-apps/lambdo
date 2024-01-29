@@ -4,7 +4,7 @@
 
 Run workloads on Fly Machines based on external events. It's like serverless, but you can run your whole code base (or whatever you want).
 
-There are three components:
+**There are three components:**
 
 1. The server (this code base), likelly run as an app within Fly
 2. Your code, which is built into a Docker image (like normal on Fly.io)
@@ -36,6 +36,20 @@ LAMBDO_SQS_QUEUE_URL
   bin/lambdo
 ```
 
+### Run on Fly.io
+
+The [`Dockerfile`](Dockerfile) in this repository will create a Docker image you can use to run this program.
+
+You can clone the repository and run `fly launch` to get started.
+
+Be sure to set the appropriate environment variables in your `fly.toml` file, and set sensitive variables via `fly secrets`.
+
+If you run the app within Fly.io, you can omit the following environment variables
+(they'll be picked up automatically based on where this app is deployed):
+
+* `LAMBDO_FLY_APP`
+* `LAMBDO_FLY_REGION`
+
 ## Your Code
 
 You need some code that reads in a JSON string from file `/tmp/events.json`. This is an array of arbitrary events that you create via the SQS queue.
@@ -58,7 +72,7 @@ that reads in the JSON from `/tmp/events.json` and handles each event provided.
 
 Then, when you create an event to process, you can set that command to be run to process the events (examples on that below).
 
-### Use A Serverless Function
+### Use a Serverless Function
 
 There's 2 base images here you can use, which is a little more like serverless in that you can provide them a function to run for each event.
 
